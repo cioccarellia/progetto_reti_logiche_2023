@@ -75,7 +75,7 @@ architecture Behavioral of  project_reti_logiche is
   
 
 begin
---/////////////////////////////////////////////////Finite State Machine per Regolare lo stato del programma al variare di reset, clock e start
+--/////////////////////////////////////////////////MODULO 1: Finite State Machine per Regolare lo stato del programma al variare di reset, clock e start
   fsm: process(i_clk, i_rst)
   begin
     if i_rst='1' then
@@ -108,7 +108,7 @@ begin
         end case;
     end if;
   end process;
-  --/////////////////////////////////////////////////Finite State Machine per OUTPUT
+  --/////////////////////////////////////////////////MODULO 2: Finite State Machine per OUTPUT
     fsm_output: process(current_state)
     begin
         case current_state is
@@ -134,14 +134,14 @@ begin
                         o_z3 <= current_out_z3;
            end case;
     end process;
- --/////////////////////////////////////////////////Finite State Machine per scansione dell'input e letura in memoria
+ --/////////////////////////////////////////////////MODULO 3: Finite State Machine per scansione dell'input e letura in memoria
     fsm_scan_read: process(current_state, current_state_reader)
     begin
         case current_state is
             when WAIT_START =>
                 Reader_Vector <= "0000000000000000";
             when READ_ADDR =>
---implementazione multiplexer scelta del canale di uscita 
+                --implementazione multiplexer scelta del canale di uscita 
                 case Current_state_reader is
                     when S0 =>
                         if i_clk'event and i_clk='1' then
@@ -153,6 +153,7 @@ begin
                             Control(0) <= i_w;
                         end if;
                         Current_State_Reader <= S_Read;
+                    --estensione del vettore a 16 bit
                     when S_read =>
                         if i_clk'event and i_clk='1' then
                             Reader_Vector(15 downto 0) <= Reader_vector(14 downto 0) & i_w;
@@ -161,7 +162,6 @@ begin
                         Current_State_Reader <= S_Read;
                         
                 end case;
---estensione del vettore a 16 bit
             when ASK_MEM =>
             -- abilitazione lettura in memoria
                 o_mem_en <= '1';
