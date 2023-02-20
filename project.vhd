@@ -89,7 +89,8 @@ begin
         o_z1 <= "00000000";
         o_z2 <= "00000000";
         o_z3 <= "00000000";
-        
+        Reader_Vector <= "0000000000000000";
+        Control <= "00";
     elsif i_clk'event and i_clk='1' then
         case current_state is
             when WAIT_START =>
