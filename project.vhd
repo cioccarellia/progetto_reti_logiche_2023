@@ -53,14 +53,25 @@ entity project_reti_logiche is
 end  project_reti_logiche;
 
 architecture Behavioral of  project_reti_logiche is
-    type S is (WAIT_START, READ_ADDR,ASK_MEM,OUTPUT);
-    
-    signal current_state: S;
+-- segnali di controllo
     signal Current_out_z0: std_logic_vector(7 downto 0);
     signal Current_out_z1: std_logic_vector(7 downto 0);
     signal Current_out_z2: std_logic_vector(7 downto 0);
     signal Current_out_z3: std_logic_vector(7 downto 0);
+    
+    
+--stati principali    
+    type State_Type is (WAIT_START, READ_ADDR,ASK_MEM,OUTPUT);
+    signal current_state: State_Type;
+    
+--stati secondari   
+    type State_Type_Reader is (S0,S1,S_READ);
+    signal current_state_reader: State_Type_Reader;
+    
+--segnali di supporto    
     signal Control: std_logic_vector(1 downto 0);
+    signal Reader_Vector: std_logic_vector(15 downto 0);
+    
   
 
 begin
@@ -107,6 +118,14 @@ begin
                 o_z2 <= "00000000";
                 o_z3 <= "00000000";
             when OUTPUT =>
+                case Control is
+                    when "00" => Current_out_z0 <= i_mem_data;
+                    when "01" => Current_out_z1 <= i_mem_data;
+                    when "10" => Current_out_z2 <= i_mem_data;
+                    when "11" => Current_out_z3 <= i_mem_data; 
+                end case;
+                   
+            
                 o_done<='1';
                         o_z0 <= current_out_z0;
                         o_z1 <= current_out_z1;
@@ -115,29 +134,40 @@ begin
            end case;
     end process;
  --/////////////////////////////////////////////////Finite State Machine per scansione dell'input e letura in memoria
-    fsm_scan_read: process(current_state)
+    fsm_scan_read: process(current_state, current_state_reader)
     begin
         case current_state is
             when WAIT_START =>
+                Reader_Vector <= "0000000000000000";
             when READ_ADDR =>
 --implementazione multiplexer scelta del canale di uscita 
-                if i_clk'event and i_clk='1' then
-                    Control(1) <= i_w;
-                end if;
-                
-                if i_clk'event and i_clk='1' then
-                    Control(0) <= i_w;
-                end if;
-                
+                case Current_state_reader is
+                    when S0 =>
+                        if i_clk'event and i_clk='1' then
+                            Control(1) <= i_w;
+                        end if;
+                        Current_State_Reader<=S1;
+                    when S1 =>    
+                        if i_clk'event and i_clk='1' then
+                            Control(0) <= i_w;
+                        end if;
+                        Current_State_Reader <= S_Read;
+                    when S_read =>
+                        if i_clk'event and i_clk='1' then
+                            Reader_Vector(15 downto 0) <= Reader_vector(14 downto 0) & i_w;
+                            Reader_Vector(0) <= i_w;
+                        end if;
+                        Current_State_Reader <= S_Read;
+                        
+                end case;
 --estensione del vettore a 16 bit
-
-
-                
-
--- abilitazione lettura in memoria
-
---lettura in memoria e acquisizione dato               
             when ASK_MEM =>
+            -- abilitazione lettura in memoria
+                o_mem_en <= '1';
+                o_mem_we <='0';
+                o_mem_addr <= Reader_Vector;
+                
+            --lettura in memoria e acquisizione dato
             when OUTPUT =>
            end case;
     end process;   
