@@ -67,8 +67,21 @@ architecture proj_impl of  project_reti_logiche is
     signal control_output:      std_logic_vector(1 downto 0);
     signal control_address:     std_logic_vector(15 downto 0);
     
+--/////////////////////////////////////////////////////////////Implementazione componenti    
+    component register_output_Z8 is
+        port(
+        clk: in std_logic;
+        rst: in std_logic;
+        x: in std_logic_vector(7 downto 0);
+        y: out std_logic_vector(7 downto 0)
+        );
+    end component;
+ --////////////////////////////////////////////////////////////Inizio del processo   
 begin
 
+    ----istanza del componente
+    RZ0: Register_output_Z8 
+        portmap();
 
     ---- FSM per gestire lo stato del programma al variare dei segnali di clock (i_clk) e reset (i_rst)
     fsm: process(i_clk, i_rst)
@@ -155,7 +168,7 @@ begin
     begin
         case current_state is
             when WAIT_START =>
-                control_address <= "0000000000000000";
+                control_address <= (others => '0');
 
             when READ_ADDR =>
                 -- implementazione multiplexer scelta del canale di uscita 
@@ -192,3 +205,31 @@ begin
            end case;
     end process;   
 end proj_impl;
+
+
+
+
+--///////////////////////////////////////////////////////////Implementazione registro di supporto
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+entity REG_Z8 is
+    port(
+        clk: in std_logic;
+        rst: in std_logic;
+        x: in std_logic_vector(7 downto 0);
+        y: out std_logic_vector(7 downto 0)
+    );
+end REG_Z8;
+architecture REG_impl of REG_Z8 is
+    begin
+        reg: process(clk,rst)
+        begin
+            if rst='1' then 
+                y <= (others=>'0');
+            elsif clk'event and clk='1' then
+                y <= x;
+            end if;
+        end process;
+    end REG_impl;
