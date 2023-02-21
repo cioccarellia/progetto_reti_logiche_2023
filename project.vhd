@@ -3,11 +3,18 @@
 -- Create Date: 02/20/2023 11:36:44 AM
 ----------------------------------------------------------------------------------
 
+
+----------------------------------------------------------------------------------
+--
+--  project_reti_logiche
+--
+----------------------------------------------------------------------------------
+
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 
 
--- project's entity
 entity project_reti_logiche is
     port(
         i_clk:          in  std_logic;
@@ -30,8 +37,6 @@ end project_reti_logiche;
 
 
 
-
--- project's implementation
 architecture proj_impl of  project_reti_logiche is
 
     -- segnali di controllo
@@ -63,26 +68,31 @@ architecture proj_impl of  project_reti_logiche is
 
 
 
-    -- Segnali di supporto alla lettura del 
+    -- Segnali di supporto alla lettura dell indirizzo di ingresso
     signal control_output:      std_logic_vector(1 downto 0);
     signal control_address:     std_logic_vector(15 downto 0);
     
---/////////////////////////////////////////////////////////////Implementazione componenti    
-    component register_output_Z8 is
+
+
+
+    -- componente di registro a 8 bit
+    component REG_OUT_8_BIT is
         port(
-        clk: in std_logic;
-        rst: in std_logic;
-        x: in std_logic_vector(7 downto 0);
-        y: out std_logic_vector(7 downto 0)
+            clk: in std_logic;
+            rst: in std_logic;
+            x: in std_logic_vector(7 downto 0);
+            y: out std_logic_vector(7 downto 0)
         );
     end component;
- --////////////////////////////////////////////////////////////Inizio del processo   
 begin
 
     ----istanza del componente
-    RZ0: Register_output_Z8 
+    R0: REG_OUT_8_BIT 
         portmap();
 
+
+
+    
     ---- FSM per gestire lo stato del programma al variare dei segnali di clock (i_clk) e reset (i_rst)
     fsm: process(i_clk, i_rst)
     begin
@@ -90,19 +100,19 @@ begin
             -- reset di tutti i segnali al loro vaalore iniziale
             current_state <= WAIT_START;
 
-            current_out_z0 <= "00000000";
-            current_out_z1 <= "00000000";
-            current_out_z2 <= "00000000";
-            current_out_z3 <= "00000000";
+            current_out_z0 <= (others => '0');
+            current_out_z1 <= (others => '0');
+            current_out_z2 <= (others => '0');
+            current_out_z3 <= (others => '0');
 
             o_done <= '0';
-            o_z0 <= "00000000";
-            o_z1 <= "00000000";
-            o_z2 <= "00000000";
-            o_z3 <= "00000000";
+            o_z0 <= (others => '0');
+            o_z1 <= (others => '0');
+            o_z2 <= (others => '0');
+            o_z3 <= (others => '0');
 
-            control_output <= "00";
-            control_address <= "0000000000000000";
+            control_output <= "00";                 -- 2  bits of zeros
+            control_address <= (others => '0');     -- 16 bits of zeros
 
         elsif i_clk'event and i_clk='1' then
             case current_state is
@@ -135,10 +145,10 @@ begin
         case current_state is
             when WAIT_START | READ_ADDR | ASK_MEM =>
                 o_done <= '0';
-                o_z0 <= "00000000";
-                o_z1 <= "00000000";
-                o_z2 <= "00000000";
-                o_z3 <= "00000000";
+                o_z0 <= (others => '0');
+                o_z1 <= (others => '0');
+                o_z2 <= (others => '0');
+                o_z3 <= (others => '0');
 
             when OUTPUT =>
                 -- sets the current address data to the selected lane
@@ -209,27 +219,39 @@ end proj_impl;
 
 
 
---///////////////////////////////////////////////////////////Implementazione registro di supporto
+
+
+----------------------------------------------------------------------------------
+--
+--  Registro di supporto a 8 bit
+--
+----------------------------------------------------------------------------------
+
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 
-entity REG_Z8 is
+-- register entity
+entity REGISTER_Z8 is
     port(
-        clk: in std_logic;
-        rst: in std_logic;
-        x: in std_logic_vector(7 downto 0);
-        y: out std_logic_vector(7 downto 0)
+        clk:    in  std_logic;
+        rst:    in  std_logic;
+        x:      in  std_logic_vector(7 downto 0);
+        y:      out std_logic_vector(7 downto 0)
     );
-end REG_Z8;
-architecture REG_impl of REG_Z8 is
+end REGISTER_Z8;
+
+
+-- register implementaation
+architecture REG_impl of REGISTER_Z8 is
     begin
-        reg: process(clk,rst)
+        register: process(clk,rst)
         begin
-            if rst='1' then 
-                y <= (others=>'0');
+            if rst='1' then
+                -- reset dello stato del registro
+                y <= (others => '0');
             elsif clk'event and clk='1' then
                 y <= x;
             end if;
         end process;
-    end REG_impl;
+end REG_impl;
