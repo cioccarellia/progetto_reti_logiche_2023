@@ -39,12 +39,17 @@ end project_reti_logiche;
 
 architecture proj_impl of  project_reti_logiche is
 
-    -- segnali di controllo
+    -- segnali di controllo (da mux a reg)
     signal current_out_z0: std_logic_vector(7 downto 0);
     signal current_out_z1: std_logic_vector(7 downto 0);
     signal current_out_z2: std_logic_vector(7 downto 0);
     signal current_out_z3: std_logic_vector(7 downto 0);
-
+    
+    --segnali di controllo (da reg a and)
+     signal reg_out_z0: std_logic_vector(7 downto 0);
+    signal reg_out_z1: std_logic_vector(7 downto 0);
+    signal reg_out_z2: std_logic_vector(7 downto 0);
+    signal reg_out_z3: std_logic_vector(7 downto 0);
 
 
 
@@ -69,8 +74,9 @@ architecture proj_impl of  project_reti_logiche is
 
 
     -- Segnali di supporto alla lettura dell indirizzo di ingresso
-    signal control_output:      std_logic_vector(1 downto 0);
-    signal control_address:     std_logic_vector(15 downto 0);
+    signal control_output:          std_logic_vector(1 downto 0);
+    signal control_address:         std_logic_vector(15 downto 0);
+    signal control_done_enable:     std_logic;
     
 
 
@@ -88,11 +94,14 @@ begin
 
     ----istanza del componente
     R0: REG_OUT_8_BIT 
-        portmap();
-
-
-
-    
+        port map(clk => i_clk, rst => i_rst, x=>current_out_z0,y => reg_out_z0 );
+    R1: REG_OUT_8_BIT 
+        port map(clk => i_clk, rst => i_rst, x=>current_out_z1,y => reg_out_z1 );
+    R2: REG_OUT_8_BIT 
+        port map(clk => i_clk, rst => i_rst, x=>current_out_z2,y => reg_out_z2 );
+    R3: REG_OUT_8_BIT 
+        port map(clk => i_clk, rst => i_rst, x=>current_out_z3,y => reg_out_z3 );
+        
     ---- FSM per gestire lo stato del programma al variare dei segnali di clock (i_clk) e reset (i_rst)
     fsm: process(i_clk, i_rst)
     begin
@@ -145,6 +154,7 @@ begin
         case current_state is
             when WAIT_START | READ_ADDR | ASK_MEM =>
                 o_done <= '0';
+                control_done_enable <= '0';
                 o_z0 <= (others => '0');
                 o_z1 <= (others => '0');
                 o_z2 <= (others => '0');
@@ -161,11 +171,11 @@ begin
             
                 -- output
                 o_done <= '1';
-
-                o_z0 <= current_out_z0;
-                o_z1 <= current_out_z1;
-                o_z2 <= current_out_z2;
-                o_z3 <= current_out_z3;
+               control_done_enable <= '1';
+                o_z0 <= reg_out_z0 and (others => control_done_enable);
+                o_z1 <= reg_out_z1 and (others => control_done_enable);
+                o_z2 <= reg_out_z2 and (others => control_done_enable);
+                o_z3 <= reg_out_z3 and (others => control_done_enable);
            end case;
     end process;
 
@@ -245,7 +255,7 @@ end REGISTER_Z8;
 -- register implementaation
 architecture REG_impl of REGISTER_Z8 is
     begin
-        register: process(clk,rst)
+        reg: process(clk,rst)
         begin
             if rst='1' then
                 -- reset dello stato del registro
