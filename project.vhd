@@ -161,21 +161,46 @@ begin
                 o_z3 <= (others => '0');
 
             when OUTPUT =>
-                -- sets the current address data to the selected lane
-                case control_output is
-                    when "00" => current_out_z0 <= i_mem_data;
-                    when "01" => current_out_z1 <= i_mem_data;
-                    when "10" => current_out_z2 <= i_mem_data;
-                    when "11" => current_out_z3 <= i_mem_data; 
-                end case;
-            
+                if control_output = "00" then
+                    current_out_z0 <= i_mem_data;
+                    current_out_z1 <= "UUUUUUUU";
+                    current_out_z2 <= "UUUUUUUU";
+                    current_out_z3 <= "UUUUUUUU";
+                elsif control_output = "01" then
+                    current_out_z0 <= "UUUUUUUU";
+                    current_out_z1 <=  i_mem_data;
+                    current_out_z2 <= "UUUUUUUU";
+                    current_out_z3 <= "UUUUUUUU";
+                elsif control_output = "10" then
+                    current_out_z0 <= "UUUUUUUU";
+                    current_out_z1 <= "UUUUUUUU"; 
+                    current_out_z2 <= i_mem_data;
+                    current_out_z3 <= "UUUUUUUU";
+                elsif control_output = "11" then
+                    current_out_z0 <= "UUUUUUUU";
+                    current_out_z1 <= "UUUUUUUU"; 
+                    current_out_z2 <= "UUUUUUUU";
+                    current_out_z3 <= i_mem_data;
+                end if;
+                   
+                   
+                   
                 -- output
                 o_done <= '1';
                control_done_enable <= '1';
-                o_z0 <= reg_out_z0 and (others => control_done_enable);
-                o_z1 <= reg_out_z1 and (others => control_done_enable);
-                o_z2 <= reg_out_z2 and (others => control_done_enable);
-                o_z3 <= reg_out_z3 and (others => control_done_enable);
+               
+               if (control_done_enable = '1') then
+                    o_z0 <= reg_out_z0 and "11111111";
+                    o_z1 <= reg_out_z1 and "11111111";
+                    o_z2 <= reg_out_z2 and "11111111";
+                    o_z3 <= reg_out_z3 and "11111111";
+                elsif control_done_enable = '0' then
+                    o_z0 <= reg_out_z0 and "00000000";
+                    o_z1 <= reg_out_z1 and "00000000";
+                    o_z2 <= reg_out_z2 and "00000000";
+                    o_z3 <= reg_out_z3 and "00000000";
+                
+                end if;
            end case;
     end process;
 
@@ -254,6 +279,9 @@ end REGISTER_Z8;
 
 -- register implementaation
 architecture REG_impl of REGISTER_Z8 is
+
+    constant inactive : std_logic_vector := "UUUUUUUU";
+
     begin
         reg: process(clk,rst)
         begin
@@ -261,7 +289,10 @@ architecture REG_impl of REGISTER_Z8 is
                 -- reset dello stato del registro
                 y <= (others => '0');
             elsif clk'event and clk='1' then
-                y <= x;
+                -- controllo di inattivita registro
+                if (x /= inactive) then
+                    y <= x;
+                end if;
             end if;
         end process;
 end REG_impl;
