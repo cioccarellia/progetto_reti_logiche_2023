@@ -104,8 +104,7 @@ begin
             MAIN_FSM_current_state <= MAIN_FSM_next_state;
          end if;
      end process;
-     
-     
+               
      
      
     comb_MAIN_FSM: process(MAIN_FSM_current_state)
@@ -249,6 +248,7 @@ begin
                                 reg_z2_contents := i_mem_data;
                             when "11" =>
                                 reg_z3_contents := i_mem_data;
+                            when others => 
                      end case;
 
                     
@@ -262,11 +262,6 @@ begin
 
 
 
-
-
-
-    
-    
     
 end proj_impl;
 
