@@ -33,7 +33,8 @@ entity project_reti_logiche is
         o_mem_addr:     out std_logic_vector(15 downto 0);
         i_mem_data:     in  std_logic_vector(7  downto 0);
         o_mem_we:       out std_logic;
-        o_mem_en:       out std_logic
+        --____________________________________________________________MODIFICA FATTA: SETTATA A 0 L'USCITA
+        o_mem_en:       out std_logic := '0'
     );
 end project_reti_logiche;
 
@@ -246,9 +247,9 @@ begin
                                 reg_z1_contents := i_mem_data;
                             when "10" =>
                                 reg_z2_contents := i_mem_data;
-                            when "11" =>
+                            --____________________________________________________________MODIFICA FATTA: POSTO DI WHEN 00 METTO WHEN OTHERS QUINDI TUTTI II CASI DIVERSI DAI PRECEDENTI PASSANO PER 11
+                            when others =>
                                 reg_z3_contents := i_mem_data;
-                            when others => 
                      end case;
 
                     
