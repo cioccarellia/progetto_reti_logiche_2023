@@ -67,7 +67,6 @@ architecture proj_impl of project_reti_logiche is
     --| Segnali di supporto alla lettura dell indirizzo di ingresso
     signal control_output:          std_logic_vector(1  downto 0);
     signal control_address:         std_logic_vector(15 downto 0);
-    signal control_done_enable:     std_logic;
   
 
 begin
@@ -89,11 +88,6 @@ begin
             control_output <= "00";                     -- 2  bits of zeros
             control_address <= (others => '0');         -- 16 bits of zeros
 
-          
-
-
-
-
             --------| impostiamo le uscite al loro valore di default
             o_mem_addr <= (others => '0');              -- 16 bits of zeros
             o_mem_en <= '0';
@@ -110,6 +104,10 @@ begin
             MAIN_FSM_current_state <= MAIN_FSM_next_state;
          end if;
      end process;
+     
+     
+     
+     
     comb_MAIN_FSM: process(MAIN_FSM_current_state)
         begin
         --------| Inizialmente imposto i valori di uscita a default
@@ -137,7 +135,7 @@ begin
     
             when ASK_MEM =>
                 -- la RAM ci mette 1cc per recuperare il valore, e poi assumo di avere il dato su i_mem_data
-                O_MEM_EN <= '1';
+                o_mem_en <= '1';
                 MAIN_FSM_next_state <= OUTPUT;
     
             when OUTPUT =>
@@ -151,47 +149,6 @@ begin
 
 
 
-  
-
-
-
-    ---- FSM per gestire i valori di uscita
-    ---- dipende solo dallo stato corrente (current_state) e si occupa di 
-    fsm_output: process(current_state)
-    begin
-        case current_state is
-            when WAIT_START | READ_ADDR | ASK_MEM =>
-                o_done <= '0';
-                control_done_enable <= '0';
-
-                o_z0 <= "00000000";
-                o_z1 <= "00000000";
-                o_z2 <= "00000000";
-                o_z3 <= "00000000";
-
-            when OUTPUT =>
-                         
-                -- output
-                o_done <= '1';
-                control_done_enable <= '1';
-                
-
-                if (control_done_enable = '1') then
-                    o_z0 <= control_reg_to_out_z0 and "11111111";
-                    o_z1 <= control_reg_to_out_z1 and "11111111";
-                    o_z2 <= control_reg_to_out_z2 and "11111111";
-                    o_z3 <= control_reg_to_out_z3 and "11111111";
-                elsif control_done_enable = '0' then
-                    o_z0 <= control_reg_to_out_z0 and "00000000";
-                    o_z1 <= control_reg_to_out_z1 and "00000000";
-                    o_z2 <= control_reg_to_out_z2 and "00000000";
-                    o_z3 <= control_reg_to_out_z3 and "00000000";
-                end if;
-                
-                
-                
-           end case;
-    end process;
 
 
     ---- FSM per scansione dell'input e letura in memoria
@@ -207,45 +164,110 @@ begin
          end if;
      end process;
     
-    comb_ACQUIRING_FSM: process(ACQUIRING_FSM_current_state)
     
+    
+    comb_acquiring_FSM: process(ACQUIRING_FSM_current_state)
     begin
-        case acquiring_current_state is
+        case main_fsm_current_state is
             when WAIT_START =>
                 control_address <= (others => '0');
 
             when READ_ADDR =>
-                -- implementazione multiplexer scelta del canale di uscita 
-                case current_state_reader is
+                case acquiring_fsm_current_state is
                     when S0 =>
-                        if rising_edge(i_clk) then
-                            control_output(1) <= i_w;
-                        end if;
-                        current_state_reader<=S1;
+                        control_output(1) <= i_w;
+                        acquiring_fsm_next_state <= S1;
 
                     when S1 =>    
-                        if rising_edge(i_clk) then
-                            control_output(0) <= i_w;
-                        end if;
-                        current_state_reader <= S_READ;
+                        control_output(0) <= i_w;
+                        acquiring_fsm_next_state <= S_READ;
 
-                    when S_read =>
+                    when S_READ =>
                         -- Estensione del vettore a 16 bit: shifto a sx 15 bit in and con i_w
-                        if rising_edge(i_clk) then
-                            control_address <= control_address(14 downto 0) & i_w; -- & concatena, and è logica
-                            control_address(0) <= i_w;
-                        end if;
-                        current_state_reader <= S_READ;
-                    
+                        control_address <= control_address(14 downto 0) & i_w; -- & concatena, and è logica
+                        control_address(0) <= i_w;
+                        
+                        acquiring_fsm_next_state <= S_READ;
                 end case;
-            when ASK_MEM =>
-                -- abilitazione lettura in memoria
-                o_mem_addr <= control_address;
                 
-            --lettura in memoria e acquisizione dato
+            when ASK_MEM =>
+                -- setto l'indirizzo di ingrsso alla RAM
+                o_mem_addr <= control_address;
             when OUTPUT =>
         end case;
     end process;   
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+  
+
+
+
+    ---- FSM per gestire i valori di uscita
+    ---- dipende solo dallo stato corrente (current_state) e si occupa di 
+    output_process: process(main_fsm_current_state, i_rst)
+
+        variable reg_z0_contents : std_logic_vector(7 downto 0);
+        variable reg_z1_contents : std_logic_vector(7 downto 0);
+        variable reg_z2_contents : std_logic_vector(7 downto 0);
+        variable reg_z3_contents : std_logic_vector(7 downto 0);
+    begin
+        if (i_rst = '1') then
+            reg_z0_contents := "00000000";
+            reg_z1_contents := "00000000";
+            reg_z2_contents := "00000000";
+            reg_z3_contents := "00000000";
+        else
+            case main_fsm_current_state is
+                when WAIT_START | READ_ADDR | ASK_MEM =>
+                    o_done <= '0';
+    
+                    o_z0 <= "00000000";
+                    o_z1 <= "00000000";
+                    o_z2 <= "00000000";
+                    o_z3 <= "00000000";
+    
+                when OUTPUT =>
+                    -- output
+                    o_done <= '1';
+                    
+                     case (control_output) is
+                            when "00" =>
+                                reg_z0_contents := i_mem_data;
+                            when "01" =>
+                                reg_z1_contents := i_mem_data;
+                            when "10" =>
+                                reg_z2_contents := i_mem_data;
+                            when "11" =>
+                                reg_z3_contents := i_mem_data;
+                     end case;
+
+                    
+                    o_z0 <= reg_z0_contents;
+                    o_z1 <= reg_z1_contents;
+                    o_z2 <= reg_z2_contents;
+                    o_z3 <= reg_z3_contents;
+            end case;
+        end if;
+    end process;
+
+
+
+
+
+
+    
+    
+    
 end proj_impl;
 
 
