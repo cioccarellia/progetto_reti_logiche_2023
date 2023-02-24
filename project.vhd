@@ -31,212 +31,130 @@ end project_reti_logiche;
 
 
 architecture proj_impl of project_reti_logiche is
+        
 
-    --| Main FSM status definition. 
-    --|
-    --| There are 4 possible states:
-    --| - WAIT_START:   Idling state, we wait for the i_start signal to go high;
-    --| - ACQUIRE_ADDR: Reading input i_w and splitting the received data in:
-    --|                     - 2 initial  for demux control (output selection);
-    --|                     - up to 16 bits for memory address.
-    --| - ASK_MEM:      Sending the received address to RAM and waiting for the response on i_mem_data;
-    --| - OUTPUT:       Enabling output, relaying the new data and the existing state to z0 through z3.
-    type fsm_main_state is (WAIT_START, ACQUIRE_ADDR, ASK_MEM, OUTPUT);
-    signal fsm_main_next_state, fsm_main_current_state: fsm_main_state;
+    type fsm_main_state is (
+        RESET,
+        WAIT_START,
+        ACQUIRE_SEL_BIT_1, ACQUIRE_SEL_BIT_2, ACQUIRE_ADDR_BIT_N,
+        ASK_MEM, 
+        OUTPUT_Z
+    );
+    signal fsm_next_state, fsm_current_state: fsm_main_state;
 
 
-
-    --| Acquisition FSM status definition. This is a sub-fsm that is supposed to run when fsm_main_state = ACQUIRE_ADDR,
-    --| Its purpose is to acquire the address, store its components bit by bit and then switch to ASK_MEM, where the
-    --| acquired address is passed to memory.
-    --|
-    --| There are three states:
-    --| - S0: Reading first demux-control bit;
-    --| - S1: Reading second demux-control bit;
-    --| - S_READ: Reading address.
-    type fsm_acquiring_state is (S0, S1, S_READ);
-    signal fsm_acquiring_current_state, fsm_acquiring_next_state: fsm_acquiring_state;
-
-
-
-    --| Support signals for acquisition state
     signal control_output:          std_logic_vector(1  downto 0);
     signal control_address:         std_logic_vector(15 downto 0);
-  
 
+
+    signal r_z0: std_logic_vector(7 downto 0);
+    signal r_z1: std_logic_vector(7 downto 0);
+    signal r_z2: std_logic_vector(7 downto 0);
+    signal r_z3: std_logic_vector(7 downto 0);
+    
 begin
-
-
-    sync_main_fsm: process(i_clk, i_rst, fsm_main_next_state)
-    begin 
-        if (i_rst='1') then
-            --------| reset di tutti i segnali al loro vaalore iniziale
-            --| impostiamo i segnali e gli stati
-            fsm_main_current_state <= WAIT_START;       -- stato iniziale di wait for start
-
-            control_output <= "00";                     -- 2  bits of zeros
-            control_address <= (others => '0');         -- 16 bits of zeros
-
-            --------| impostiamo le uscite al loro valore di default
-            o_mem_addr <= (others => '0');              -- 16 bits of zeros
-            o_mem_en <= '0';
-            o_mem_we <= '0';
-
-            o_done <= '0';
-            o_z0 <= "00000000";
-            o_z1 <= "00000000";
-            o_z2 <= "00000000";
-            o_z3 <= "00000000";
-
-        elsif (rising_edge(i_clk)) then  
-            fsm_main_current_state <= fsm_main_next_state;
+    
+    sync_fsm: process(i_clk, i_rst, fsm_next_state)
+    begin
+        if (i_rst = '1') then
+            fsm_current_state <= RESET;
+        elsif (i_clk'event and i_clk = '1') then
+            fsm_current_state <= fsm_next_state;
         end if;
-     end process;
-               
-     
-     
+    end process sync_fsm;
+    
 
-    comb_main_fsm: process(fsm_main_current_state)
-        begin
-        -- pre-setting outputs          
-        o_mem_en <= '0';
-        o_mem_we <= '0';
 
-        o_done <= '0';
+    comb_fsm: process(fsm_current_state, i_start, i_w, i_mem_data)
+    begin
+        -- pre-setting outputs
         o_z0 <= "00000000";
         o_z1 <= "00000000";
         o_z2 <= "00000000";
         o_z3 <= "00000000";
-        
-        
-        case fsm_main_current_state is
+
+        o_done <= '0';
+
+        o_mem_addr <= "0000000000000000";
+        o_mem_en <= '0';
+        o_mem_we <= '0';
+
+
+        case fsm_current_state is
             when WAIT_START =>
                 if i_start='1' then
-                    fsm_main_next_state <= ACQUIRE_ADDR;
+                    fsm_next_state <= ACQUIRE_SEL_BIT_1;
+                    
+                    -- init control output sel
+                    control_output <= "00";
+                    control_address <= (others => '0');
                 end if;
     
-            when ACQUIRE_ADDR =>
-                if i_start='0' then
-                    fsm_main_next_state <= ASK_MEM;
-                end if;
-    
+            when ACQUIRE_SEL_BIT_1 =>
+                control_output(1) <= i_w;
+                fsm_next_state <= ACQUIRE_SEL_BIT_2;
+
+            when ACQUIRE_SEL_BIT_2 =>
+                control_output(0) <= i_w;
+                fsm_next_state <= ACQUIRE_ADDR_BIT_N;
+
+            when ACQUIRE_ADDR_BIT_N =>
+                control_address <= control_address(14 downto 0) & i_w; -- & concatena, and è logica
+                control_address(0) <= i_w;
+                
+                fsm_next_state <= ACQUIRE_ADDR_BIT_N;
+
             when ASK_MEM =>
                 -- la RAM ci mette 1cc per recuperare il valore, e poi assumo di avere il dato su i_mem_data
                 o_mem_en <= '1';
-                fsm_main_next_state <= OUTPUT;
+                fsm_next_state <= OUTPUT_Z;
     
-            when OUTPUT =>
-                --!!FIXME!! probabilmente è meglio impostare questo direttamente in fsm_output, e non qui, perchè non ci metto solo 1cc
-                fsm_main_next_state <= WAIT_START;
-        end case;
-    end process;
-             
+            when OUTPUT_Z =>
+                o_done <= '1';
 
+                case (control_output) is
+                    when "00" =>
+                        o_z0 <= i_mem_data;
+                        o_z1 <= r_z1;
+                        o_z2 <= r_z2;
+                        o_z3 <= r_z3;
+                    when "01" =>
+                        o_z0 <= r_z0;
+                        o_z1 <= i_mem_data;
+                        o_z2 <= r_z2;
+                        o_z3 <= r_z3;
+                    when "10" =>
+                        o_z0 <= r_z0;
+                        o_z1 <= r_z1;
+                        o_z2 <= i_mem_data;
+                        o_z3 <= r_z3;
+                    when others =>          -- "11" =>
+                        o_z0 <= r_z0;
+                        o_z1 <= r_z1;
+                        o_z2 <= r_z2;
+                        o_z3 <= i_mem_data;
+                end case;
 
+                -- o_z0 <= r_z0;
+                -- o_z1 <= r_z1;
+                -- o_z2 <= r_z2;
+                -- o_z3 <= r_z3;
 
+                -- loop back
+                fsm_next_state <= WAIT_START;
 
-
-
-
-    ---- FSM per scansione dell'input e letura in memoria
-    sync_acquiring_fsm: process(i_clk, i_rst, fsm_acquiring_next_state)
-        begin 
-        if (i_rst='1') then
-            --------| reset di tutti i segnali al loro vaalore iniziale
-            --| impostiamo i segnali e gli stati
-            fsm_acquiring_current_state <= S0;                -- stato iniziale di wait for start
-
-        elsif (rising_edge(i_clk)) then  
-            fsm_acquiring_current_state <= fsm_acquiring_next_state;
-         end if;
-     end process;
-    
-    
-    
-    comb_acquiring_fsm: process(fsm_acquiring_current_state)
-    begin
-        case fsm_main_current_state is
-            when WAIT_START =>
+            when OTHERS =>
+                r_z0 <= "00000000";
+                r_z1 <= "00000000";
+                r_z2 <= "00000000";
+                r_z3 <= "00000000";
+                
+                control_output <= "00";
                 control_address <= (others => '0');
 
-            when ACQUIRE_ADDR =>
-                case fsm_acquiring_current_state is
-                    when S0 =>
-                        control_output(1) <= i_w;
-                        fsm_acquiring_next_state <= S1;
-
-                    when S1 =>    
-                        control_output(0) <= i_w;
-                        fsm_acquiring_next_state <= S_READ;
-
-                    when S_READ =>
-                        -- Estensione del vettore a 16 bit: shifto a sx 15 bit in and con i_w
-                        control_address <= control_address(14 downto 0) & i_w; -- & concatena, and è logica
-                        control_address(0) <= i_w;
-                        
-                        fsm_acquiring_next_state <= S_READ;
-                end case;
-                
-            when ASK_MEM =>
-                -- setto l'indirizzo di ingrsso alla RAM
-                o_mem_addr <= control_address;
-            when OUTPUT =>
+                fsm_next_state <= WAIT_START;
         end case;
-    end process;   
+    end process comb_fsm;
     
-    
-    
-    
-    
-    
-    
-    
-    
-    output_process: process(fsm_main_current_state, i_rst)
-        variable reg_z0_contents : std_logic_vector(7 downto 0) := "00000000";
-        variable reg_z1_contents : std_logic_vector(7 downto 0) := "00000000";
-        variable reg_z2_contents : std_logic_vector(7 downto 0) := "00000000";
-        variable reg_z3_contents : std_logic_vector(7 downto 0) := "00000000";
-    begin
-        if (i_rst = '1') then
-            reg_z0_contents := "00000000";
-            reg_z1_contents := "00000000";
-            reg_z2_contents := "00000000";
-            reg_z3_contents := "00000000";
-        else
-            case fsm_main_current_state is
-                when WAIT_START | ACQUIRE_ADDR | ASK_MEM =>
-                    o_done <= '0';
-    
-                    o_z0 <= "00000000";
-                    o_z1 <= "00000000";
-                    o_z2 <= "00000000";
-                    o_z3 <= "00000000";
-    
-                when OUTPUT =>
-                    o_done <= '1';
-                    
-                    -- demux-ing the new data
-                    case (control_output) is
-                        when "00" =>
-                            reg_z0_contents := i_mem_data;
-                        when "01" =>
-                            reg_z1_contents := i_mem_data;
-                        when "10" =>
-                            reg_z2_contents := i_mem_data;
-                        when others =>
-                            reg_z3_contents := i_mem_data;
-                    end case;
 
-                    
-                    -- register propagation
-                    o_z0 <= reg_z0_contents;
-                    o_z1 <= reg_z1_contents;
-                    o_z2 <= reg_z2_contents;
-                    o_z3 <= reg_z3_contents;
-            end case;
-        end if;
-    end process;
-
-    
 end proj_impl;
