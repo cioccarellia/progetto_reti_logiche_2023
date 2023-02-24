@@ -64,8 +64,17 @@ architecture proj_impl of project_reti_logiche is
     signal control_address:         std_logic_vector(15 downto 0);
   
 
-begin
+    signal s_o_z0:           std_logic_vector(7  downto 0);
+    signal s_o_z1:           std_logic_vector(7  downto 0);
+    signal s_o_z2:           std_logic_vector(7  downto 0);
+    signal s_o_z3:           std_logic_vector(7  downto 0);
 
+    signal s_o_done:         std_logic;
+    signal s_o_mem_addr:     std_logic_vector(15 downto 0);
+    signal s_o_mem_we:       std_logic;
+    signal s_o_mem_en:       std_logic;
+
+begin
 
     sync_main_fsm: process(i_clk, i_rst, fsm_main_next_state)
     begin 
@@ -78,17 +87,17 @@ begin
             control_address <= (others => '0');         -- 16 bits of zeros
 
             --------| impostiamo le uscite al loro valore di default
-            o_mem_addr <= (others => '0');              -- 16 bits of zeros
-            o_mem_en <= '0';
-            o_mem_we <= '0';
+            s_o_mem_addr <= (others => '0');              -- 16 bits of zeros
+            s_o_mem_en <= '0';
+            s_o_mem_we <= '0';
 
-            o_done <= '0';
-            o_z0 <= "00000000";
-            o_z1 <= "00000000";
-            o_z2 <= "00000000";
-            o_z3 <= "00000000";
+            s_o_done <= '0';
+            s_o_z0 <= "00000000";
+            s_o_z1 <= "00000000";
+            s_o_z2 <= "00000000";
+            s_o_z3 <= "00000000";
 
-        elsif (rising_edge(i_clk)) then  
+        elsif (i_clk'event and i_clk='1') then  
             fsm_main_current_state <= fsm_main_next_state;
         end if;
      end process;
@@ -96,17 +105,18 @@ begin
      
      
 
-    comb_main_fsm: process(fsm_main_current_state)
+    comb_main_fsm: process(fsm_main_current_state, i_start)
         begin
         -- pre-setting outputs          
-        o_mem_en <= '0';
-        o_mem_we <= '0';
+        s_o_mem_en <= '0';
+        s_o_mem_we <= '0';
+        s_o_mem_addr <= "0000000000000000";
 
-        o_done <= '0';
-        o_z0 <= "00000000";
-        o_z1 <= "00000000";
-        o_z2 <= "00000000";
-        o_z3 <= "00000000";
+        s_o_done <= '0';
+        s_o_z0 <= "00000000";
+        s_o_z1 <= "00000000";
+        s_o_z2 <= "00000000";
+        s_o_z3 <= "00000000";
         
         
         case fsm_main_current_state is
@@ -122,7 +132,7 @@ begin
     
             when ASK_MEM =>
                 -- la RAM ci mette 1cc per recuperare il valore, e poi assumo di avere il dato su i_mem_data
-                o_mem_en <= '1';
+                s_o_mem_en <= '1';
                 fsm_main_next_state <= OUTPUT;
     
             when OUTPUT =>
@@ -146,14 +156,14 @@ begin
             --| impostiamo i segnali e gli stati
             fsm_acquiring_current_state <= S0;                -- stato iniziale di wait for start
 
-        elsif (rising_edge(i_clk)) then  
+        elsif (i_clk'event and i_clk='1') then  
             fsm_acquiring_current_state <= fsm_acquiring_next_state;
          end if;
      end process;
     
     
     
-    comb_acquiring_fsm: process(fsm_acquiring_current_state)
+    comb_acquiring_fsm: process(fsm_main_current_state, fsm_acquiring_current_state, control_address)
     begin
         case fsm_main_current_state is
             when WAIT_START =>
@@ -206,15 +216,15 @@ begin
         else
             case fsm_main_current_state is
                 when WAIT_START | ACQUIRE_ADDR | ASK_MEM =>
-                    o_done <= '0';
+                    s_o_done <= '0';
     
-                    o_z0 <= "00000000";
-                    o_z1 <= "00000000";
-                    o_z2 <= "00000000";
-                    o_z3 <= "00000000";
+                    s_o_z0 <= "00000000";
+                    s_o_z1 <= "00000000";
+                    s_o_z2 <= "00000000";
+                    s_o_z3 <= "00000000";
     
                 when OUTPUT =>
-                    o_done <= '1';
+                    s_o_done <= '1';
                     
                     -- demux-ing the new data
                     case (control_output) is
@@ -230,13 +240,27 @@ begin
 
                     
                     -- register propagation
-                    o_z0 <= reg_z0_contents;
-                    o_z1 <= reg_z1_contents;
-                    o_z2 <= reg_z2_contents;
-                    o_z3 <= reg_z3_contents;
+                    s_o_z0 <= reg_z0_contents;
+                    s_o_z1 <= reg_z1_contents;
+                    s_o_z2 <= reg_z2_contents;
+                    s_o_z3 <= reg_z3_contents;
             end case;
         end if;
     end process;
+
+    
+    
+    -- setting output signals
+    o_z0 <= s_o_z0;
+    o_z1 <= s_o_z1;
+    o_z2 <= s_o_z2;
+    o_z3 <= s_o_z3;
+    
+    o_done <= s_o_done;
+    o_mem_addr <= s_o_mem_addr;
+    o_mem_we <= s_o_mem_we;
+    o_mem_en <= s_o_mem_en;
+
 
     
 end proj_impl;
