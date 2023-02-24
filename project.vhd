@@ -33,8 +33,7 @@ entity project_reti_logiche is
         o_mem_addr:     out std_logic_vector(15 downto 0);
         i_mem_data:     in  std_logic_vector(7  downto 0);
         o_mem_we:       out std_logic;
-        --____________________________________________________________MODIFICA FATTA: SETTATA A 0 L'USCITA
-        o_mem_en:       out std_logic := '0'
+        o_mem_en:       out std_logic:='0'
     );
 end project_reti_logiche;
 
@@ -43,7 +42,7 @@ end project_reti_logiche;
 architecture proj_impl of project_reti_logiche is
 
    
-
+   
 
     --| Stato della FSM che modella l'esecuzione del processo.
     --| Ci sono 4 stati possibili: 
@@ -105,7 +104,8 @@ begin
             MAIN_FSM_current_state <= MAIN_FSM_next_state;
          end if;
      end process;
-               
+     
+     
      
      
     comb_MAIN_FSM: process(MAIN_FSM_current_state)
@@ -198,19 +198,11 @@ begin
     end process;   
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-  
-
-
+            
+            
+            
+            
+            
 
     ---- FSM per gestire i valori di uscita
     ---- dipende solo dallo stato corrente (current_state) e si occupa di 
@@ -247,9 +239,9 @@ begin
                                 reg_z1_contents := i_mem_data;
                             when "10" =>
                                 reg_z2_contents := i_mem_data;
-                            --____________________________________________________________MODIFICA FATTA: POSTO DI WHEN 00 METTO WHEN OTHERS QUINDI TUTTI II CASI DIVERSI DAI PRECEDENTI PASSANO PER 11
                             when others =>
                                 reg_z3_contents := i_mem_data;
+                            
                      end case;
 
                     
@@ -263,16 +255,10 @@ begin
 
 
 
+
+
+
+    
+    
     
 end proj_impl;
-
-
-
-
-
-
--- COSE DA SISTEMARE
--- 1 RINOMINARE TUTTI GLI STATI 
---2 IDENTARE
---3 CAMBIARE I COMMENTI IN INGLESE
---SISTEMAZIONE DEI NOMI DELLE VARIABILI IN GENERALE
