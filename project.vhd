@@ -107,7 +107,6 @@ begin
                 else
                     if (i_clk = '1' and fsm_current_state = fsm_next_state) then
                         control_address <= control_address(14 downto 0) & i_w; -- & concatena, and è logica
-                        control_address(0) <= i_w;
                 
                         fsm_next_state <= ACQUIRE_ADDR_BIT_N;
                     end if;
@@ -116,7 +115,7 @@ begin
             when ASK_MEM =>
                 -- la RAM ci mette 1cc per recuperare il valore, e poi assumo di avere il dato su i_mem_data
                 o_mem_en <= '1';
-                --o_mem_we <= ''';
+                --o_mem_we <= '1';
                 o_mem_addr <= control_address;
                 
                 fsm_next_state <= OUTPUT_Z;
@@ -175,7 +174,7 @@ begin
                 control_output <= "00";
                 control_address <= (others => '0');
 
-                fsm_current_state <= WAIT_START;
+                --fsm_current_state <= WAIT_START;
                 fsm_next_state <= WAIT_START;
         end case;
         
