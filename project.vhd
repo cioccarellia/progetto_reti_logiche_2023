@@ -60,6 +60,10 @@ begin
             fsm_current_state <= RESET;
         elsif (i_clk'event and i_clk = '1') then
             fsm_current_state <= fsm_next_state;
+        
+        --///////////////////////////////////////////proposta di modifica
+        --else 
+            --fsm_current_state <= fsm_current_state;
         end if;
     end process sync_fsm;
     
@@ -87,18 +91,29 @@ begin
                     -- init control output sel
                     control_output <= "00";
                     control_address <= (others => '0');
+                --///////////////////////////////////////////////Proposta di modifica - gestione latch, da capire se tenere inalterati gli stati oppure mettere semplicemente: else end if;
+                --else
+                    --control_output <= "00";
+                    --control_address <= (others => '0');
+                    --fsm_next_state <=wait_start;
                 end if;
     
             when ACQUIRE_SEL_BIT_1 =>
                 if (i_clk = '1' and fsm_current_state = fsm_next_state) then
                     control_output(1) <= i_w;
                     fsm_next_state <= ACQUIRE_SEL_BIT_2;
+                --///////////////////////////////////////////////Proposta di modifica - gestione latch
+                --else
+                    --fsm_current_state <= acquire_sel_bit_1;
                 end if;
 
             when ACQUIRE_SEL_BIT_2 =>
                 if (i_clk = '1' and fsm_current_state = fsm_next_state) then
                     control_output(0) <= i_w;
                     fsm_next_state <= ACQUIRE_ADDR_BIT_N;
+                    --///////////////////////////////////////////////Proposta di modifica - gestione latch
+                --else
+                    --fsm_current_state <= acquire_sel_bit_2;
                 end if;
 
             when ACQUIRE_ADDR_BIT_N =>
@@ -109,6 +124,9 @@ begin
                         control_address <= control_address(14 downto 0) & i_w; -- & concatena, and è logica
                 
                         fsm_next_state <= ACQUIRE_ADDR_BIT_N;
+                    --///////////////////////////////////////////////Proposta di modifica - gestione latch
+                    --else
+                        --fsm_current_state <= acquire_sel_bit_N;
                     end if;
                 end if;
 
@@ -148,7 +166,7 @@ begin
                             o_z3 <= r_z3;
                             
                             r_z2 <= i_mem_data;
-                        when others =>          -- "11" =>
+                        when others =>          -- "11" =>  //ottima la gestione degli stati con others, oltre a sistemare le casistiche non crea ulteriori latch
                             o_z0 <= r_z0;
                             o_z1 <= r_z1;
                             o_z2 <= r_z2;
