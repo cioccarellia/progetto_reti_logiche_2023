@@ -104,6 +104,8 @@ begin
                     fsm_next_state <= ACQUIRE_SEL_BIT_2;
                 --///////////////////////////////////////////////Proposta di modifica - gestione latch
                 --else
+                    --control_output <= "00";
+                    --control_address <= (others => '0');
                     --fsm_current_state <= acquire_sel_bit_1;
                 end if;
 
@@ -113,6 +115,8 @@ begin
                     fsm_next_state <= ACQUIRE_ADDR_BIT_N;
                     --///////////////////////////////////////////////Proposta di modifica - gestione latch
                 --else
+                    --control_output(1) <= i_w;
+                    --control_address <= (others => '0');
                     --fsm_current_state <= acquire_sel_bit_2;
                 end if;
 
@@ -126,6 +130,7 @@ begin
                         fsm_next_state <= ACQUIRE_ADDR_BIT_N;
                     --///////////////////////////////////////////////Proposta di modifica - gestione latch
                     --else
+                        --control_address <= (others => '0');
                         --fsm_current_state <= acquire_sel_bit_N;
                     end if;
                 end if;
