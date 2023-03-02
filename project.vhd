@@ -38,6 +38,7 @@ architecture proj_impl of project_reti_logiche is
         WAIT_START,
         ACQUIRE_SEL_BIT_1, ACQUIRE_SEL_BIT_2, ACQUIRE_ADDR_BIT_N,
         ASK_MEM, 
+        WAITING_STATE,
         OUTPUT_Z
     );
     signal fsm_state: fsm_main_state;
@@ -56,9 +57,17 @@ begin
     
 
 
-    fsm: process(i_clk, i_rst, fsm_state)
+    fsm: process(i_clk, i_rst)
     begin
  
+        --o_mem_addr <= "0000000000000000";
+            o_mem_en <= '1';
+            o_mem_we <= '0';
+            o_z0 <= "00000000";
+            o_z1 <= "00000000";
+            o_z2 <= "00000000";
+            o_z3 <= "00000000";
+            
         
         if (i_rst = '1') then
             -- pre-setting outputs
@@ -72,7 +81,7 @@ begin
             o_done <= '0';
     
             o_mem_addr <= "0000000000000000";
-            o_mem_en <= '0';
+            --o_mem_en <= '0';
             o_mem_we <= '0';
 
 
@@ -97,7 +106,7 @@ begin
             o_done <= '0';
     
             o_mem_addr <= "0000000000000000";
-            o_mem_en <= '0';
+            --o_mem_en <= '0';
             o_mem_we <= '0';
 
             fsm_state <= WAIT_START;
@@ -105,18 +114,19 @@ begin
             case fsm_state is
                 when WAIT_START =>
                     if i_start='1' then
-                        fsm_state <= ACQUIRE_SEL_BIT_1;
+                    control_output(1) <= i_w;
+                        fsm_state <= ACQUIRE_SEL_BIT_2;
                         
                         -- init control output sel
-                        control_output <= "00";
+                        --control_output <= "00";
                         control_address <= (others => '0');
                     else 
                         fsm_state <= WAIT_START;
                     end if;
         
-                when ACQUIRE_SEL_BIT_1 =>                  
-                        control_output(1) <= i_w;
-                        fsm_state <= ACQUIRE_SEL_BIT_2;
+                --when ACQUIRE_SEL_BIT_1 =>                  
+                        --control_output(1) <= i_w;
+                        --fsm_state <= ACQUIRE_SEL_BIT_2;
                    
                 when ACQUIRE_SEL_BIT_2 =>                  
                         control_output(0) <= i_w;
@@ -124,6 +134,7 @@ begin
                     
                 when ACQUIRE_ADDR_BIT_N =>
                     if (i_start = '0') then
+                        
                         fsm_state <= ASK_MEM;
                     else
                         control_address <= control_address(14 downto 0) & i_w; -- & concatena, and è logica
@@ -132,16 +143,16 @@ begin
     
                 when ASK_MEM =>
                     -- la RAM ci mette 1cc per recuperare il valore, e poi assumo di avere il dato su i_mem_data
-                    o_mem_en <= '1';
+                    --o_mem_en <= '1';
                     --o_mem_we <= '0';
                     o_mem_addr <= control_address;
                     
-                    fsm_state <= OUTPUT_Z;
+                    fsm_state <= WAITING_STATE;
+                when WAITING_STATE =>
+                        fsm_state <= OUTPUT_Z;
         
                 when OUTPUT_Z =>
-                    if (i_mem_data = "UU") then
-                        -- nothing
-                    else
+                    
                         -- outputting
                         o_done <= '1';
     
@@ -183,7 +194,6 @@ begin
     
                         -- loop back
                         fsm_state <= WAIT_START;
-                    end if;
                 when others => -- RESET =>
                     r_z0 <= "00000000";
                     r_z1 <= "00000000";
