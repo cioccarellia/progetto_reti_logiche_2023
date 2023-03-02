@@ -38,7 +38,7 @@ architecture proj_impl of project_reti_logiche is
         --| Reset state:        brings the circuit in its initial state
         RESET,
 
-        --| Idling state:       we are waiting for the `i_start` signal to go high.
+        --| Idling state:       Waiting for the `i_start` signal to go high.
         WAIT_START,
 
         --| Acquisition states: necessary for the full bit-by-bit acquisition of the 
@@ -74,7 +74,6 @@ begin
     begin
         --| pre-setting outputs
 
-        --o_mem_addr <= "0000000000000000";
         o_mem_en <= '1';
         o_mem_we <= '0';
         o_z0 <= "00000000";
@@ -95,7 +94,6 @@ begin
             o_done <= '0';
     
             o_mem_addr <= "0000000000000000";
-            --o_mem_en <= '0';
             o_mem_we <= '0';
 
 
@@ -119,13 +117,10 @@ begin
     
             o_done <= '0';
             o_mem_addr <= "0000000000000000";
-            --o_mem_en <= '0';
             o_mem_we <= '0';
 
             fsm_state <= WAIT_START;
             
-
-
             case fsm_state is
                 when WAIT_START =>
                     if i_start='1' then
@@ -133,18 +128,13 @@ begin
                         fsm_state <= ACQUIRE_SEL_BIT_2;
                         
                         --| init control output sel
-            --          control_output <= "00";
                         control_address <= (others => '0');
 
                     else 
                         fsm_state <= WAIT_START;
 
                     end if;
-        
-            --  when ACQUIRE_SEL_BIT_1 =>                  
-            --      ontrol_output(1) <= i_w;
-            --      sm_state <= ACQUIRE_SEL_BIT_2;
-                   
+                                       
                 when ACQUIRE_SEL_BIT_2 =>                  
                         control_output(0) <= i_w;
                         fsm_state <= ACQUIRE_ADDR_BIT_N;
@@ -153,14 +143,12 @@ begin
                     if (i_start = '0') then
                         fsm_state <= ASK_MEM;
                     else
-                        control_address <= control_address(14 downto 0) & i_w; -- & concatena, and è logica
+                        control_address <= control_address(14 downto 0) & i_w; -- & Concatenating throught 'and' logic port, likewise full adder component
                         fsm_state <= ACQUIRE_ADDR_BIT_N;
                     end if;
     
                 when ASK_MEM =>
                     --| The RAM component takes 1 clock cycle to fetch the word and put it on `i_mem_data`
-            --      o_mem_en <= '1';
-            --      o_mem_we <= '0';
                     o_mem_addr <= control_address;
                     fsm_state <= WAITING_STATE;
 
@@ -201,11 +189,6 @@ begin
                                 
                                 r_z3 <= i_mem_data;
                         end case;
-    
-                --       o_z0 <= r_z0;
-                --       o_z1 <= r_z1;
-                --       o_z2 <= r_z2;
-                --       o_z3 <= r_z3;
     
                         --| loop back to start state
                         fsm_state <= WAIT_START;
